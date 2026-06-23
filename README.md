@@ -1,58 +1,53 @@
-# Arknights Dialogue Overlay
+# Arknights Home Voice Overlay
 
-Private PySide6 overlay for showing an Arknights-like story dialogue HUD over a character image and voice line.
+Private PySide6 overlay for showing an Arknights-style home assistant voice bubble over the existing character images.
 
 ## Run
 
-Use the existing processed config:
+Use the default matched voice config:
 
 ```bash
 python main.py config.py
 ```
 
-Use the PRTS sample assets:
+Use the short greeting-only config:
 
 ```bash
-python main.py prts_sample_config.py
+python main.py start.py
 ```
 
 Render a preview PNG without opening the overlay:
 
 ```bash
-QT_QPA_PLATFORM=offscreen python main.py prts_sample_config.py --preview previews/prts_story_dialog.png
+QT_QPA_PLATFORM=offscreen python main.py config.py --preview previews/home_voice_bubble.png --line "你们在最危急的时候带领罗德岛找到了航向，阿米娅无疑已经是成熟的领袖，我也从未怀疑过可露希尔的才能与你的决策。罗德岛不会因为离开谁就无法前行，失去的一切同样造就了现在的罗德岛。"
 ```
 
 ## Config
 
-The old format still works:
+Each `voices` item binds one audio file to its matching subtitle:
 
 ```python
 myconfig = {
-    "processed_png/1_3_cropped.png": ["1.wav", "2.wav"],
-}
-```
-
-The richer dialogue format supports speaker, lines, side, and optional background:
-
-```python
-myconfig = {
-    "assets/prts/Avg_avg_2026_yu_1-1$1.png": {
-        "audios": ["start.wav"],
-        "speaker": "余",
-        "lines": ["这里不是终点，只是另一个需要做出选择的路口。"],
-        "side": "right",
+    "processed_png/2_3_cropped.png": {
+        "speaker": "凯尔希·思衡托",
+        "side": "left",
+        "voices": [
+            {
+                "title": "交谈2",
+                "audio": "assets/voices/char_1052_kalts2/cn_003.mp3",
+                "text": "你们在最危急的时候带领罗德岛找到了航向...",
+            },
+        ],
     },
 }
-
-background = "assets/prts/Avg_23_I01.png"
 ```
 
 Useful flags:
 
 ```bash
-python main.py config.py --speaker 阿米娅 --line "博士，请下达指令。" --side left
+python main.py config.py --speaker 凯尔希·思衡托 --line "Dr.，我在。" --side left
 python main.py config.py --no-dialog
-python main.py config.py --typing-cps 0 --hold-ms 1600 --speed-label 3X
+python main.py config.py --typing-cps 0 --hold-ms 1600
 ```
 
-PRTS-downloaded files are documented in `assets/prts/SOURCES.md`. Keep this project private while it contains game assets.
+PRTS-downloaded voice files are documented in `assets/voices/char_1052_kalts2/SOURCES.md`. Keep this project private while it contains game assets.

@@ -50,7 +50,6 @@ DEFAULT_ANIM_MS = 500
 DEFAULT_TYPING_CPS = 36.0
 DEFAULT_HOLD_MS = 900
 DEFAULT_PREVIEW_SIZE = "1600x900"
-DEFAULT_SPEED_LABEL = "1X"
 DEFAULT_LINES = [
     "博士，通讯链路已经接入。接下来的行动，请交给我。",
     "这里是罗德岛。目标区域状态稳定，可以开始下一步确认。",
@@ -68,11 +67,17 @@ FONT_CANDIDATES = [
 
 
 @dataclass(frozen=True)
+class DialogueClip:
+    audio_path: Path
+    title: str
+    line: str
+
+
+@dataclass(frozen=True)
 class SceneEntry:
     image_path: Path
-    audio_paths: list[Path]
+    clips: list[DialogueClip]
     speaker: str
-    lines: list[str]
     side: str | None
 
 
@@ -89,6 +94,7 @@ class Scene:
     speaker: str
     line: str
     side: str
+    title: str
 
 
 def parse_args() -> argparse.Namespace:
@@ -148,12 +154,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--background",
         default=None,
-        help="Optional story background image. Relative paths resolve from the config directory.",
-    )
-    parser.add_argument(
-        "--speed-label",
-        default=DEFAULT_SPEED_LABEL,
-        help="Top-right story speed label, for example 1X or 3X",
+        help="Optional background image. Relative paths resolve from the config directory.",
     )
     parser.add_argument(
         "--preview",
@@ -195,6 +196,78 @@ def resolve_path(path: str, base_dir: Path) -> Path:
     return p.resolve()
 
 
+def parse_clip(value: Any, base_dir: Path, fallback_line: str = "") -> DialogueClip | None:
+    if isinstance(value, dict):
+        audio_value = (
+            value.get("audio")
+            or value.get("path")
+            or value.get("voice")
+            or value.get("file")
+        )
+        title = str(value.get("title") or value.get("name") or "").strip()
+        line = str(
+            value.get("line")
+            or value.get("text")
+            or value.get("dialogue")
+            or fallback_line
+        ).strip()
+    else:
+        audio_value = value
+        title = ""
+        line = fallback_line
+
+    if not audio_value or not str(audio_value).strip():
+        return None
+
+    return DialogueClip(
+        audio_path=resolve_path(str(audio_value), base_dir),
+        title=title,
+        line=line,
+    )
+
+
+def parse_clips(value: Any, base_dir: Path) -> list[DialogueClip]:
+    if isinstance(value, dict):
+        voice_items = value.get("voices") or value.get("clips") or value.get("dialogues")
+        if voice_items:
+            return [
+                clip
+                for clip in (
+                    parse_clip(item, base_dir) for item in as_list(voice_items)
+                )
+                if clip is not None
+            ]
+
+        audio_value = (
+            value.get("audios")
+            or value.get("audio")
+            or value.get("voices")
+            or value.get("voice")
+        )
+        lines = [
+            str(item).strip()
+            for item in as_list(
+                value.get("lines")
+                or value.get("line")
+                or value.get("text")
+                or value.get("dialogue")
+            )
+            if str(item).strip()
+        ]
+    else:
+        audio_value = value
+        lines = []
+
+    clips: list[DialogueClip] = []
+    for index, audio in enumerate(as_list(audio_value)):
+        fallback_line = lines[index] if index < len(lines) else (lines[0] if lines else "")
+        clip = parse_clip(audio, base_dir, fallback_line=fallback_line)
+        if clip is not None:
+            clips.append(clip)
+
+    return clips
+
+
 def load_config(config_path: Path) -> ConfigBundle:
     config_path = config_path.expanduser().resolve()
 
@@ -221,42 +294,19 @@ def load_config(config_path: Path) -> ConfigBundle:
     for img, value in data.items():
         image_path = resolve_path(str(img), base_dir)
         speaker = ""
-        lines: list[str] = []
         side: str | None = None
 
         if isinstance(value, dict):
-            audio_value = (
-                value.get("audios")
-                or value.get("audio")
-                or value.get("voices")
-                or value.get("voice")
-            )
             speaker = str(value.get("speaker") or value.get("name") or "").strip()
-            line_value = (
-                value.get("lines")
-                or value.get("line")
-                or value.get("text")
-                or value.get("dialogue")
-            )
-            lines = [str(item).strip() for item in as_list(line_value) if str(item).strip()]
             side_value = str(value.get("side") or "").strip().lower()
             if side_value in {"left", "right"}:
                 side = side_value
-        else:
-            audio_value = value
-
-        audio_paths = [
-            resolve_path(str(audio), base_dir)
-            for audio in as_list(audio_value)
-            if str(audio).strip()
-        ]
 
         entries.append(
             SceneEntry(
                 image_path=image_path,
-                audio_paths=audio_paths,
+                clips=parse_clips(value, base_dir),
                 speaker=speaker,
-                lines=lines,
                 side=side,
             )
         )
@@ -283,16 +333,15 @@ def choose_scene(
         if not entry.image_path.exists():
             continue
 
-        valid_audios = [audio for audio in entry.audio_paths if audio.exists()]
-        if not valid_audios:
+        valid_clips = [clip for clip in entry.clips if clip.audio_path.exists()]
+        if not valid_clips:
             continue
 
         candidates.append(
             SceneEntry(
                 image_path=entry.image_path,
-                audio_paths=valid_audios,
+                clips=valid_clips,
                 speaker=entry.speaker,
-                lines=entry.lines,
                 side=entry.side,
             )
         )
@@ -301,9 +350,10 @@ def choose_scene(
         return None
 
     entry = random.choice(candidates)
+    clip = random.choice(entry.clips)
     lines = [line.strip() for line in (cli_lines or []) if line.strip()]
     if not lines:
-        lines = entry.lines or DEFAULT_LINES
+        lines = [clip.line] if clip.line else DEFAULT_LINES
 
     speaker = (cli_speaker or entry.speaker or "罗德岛").strip()
 
@@ -316,10 +366,11 @@ def choose_scene(
 
     return Scene(
         image_path=entry.image_path,
-        audio_path=random.choice(entry.audio_paths),
+        audio_path=clip.audio_path,
         speaker=speaker,
         line=random.choice(lines),
         side=side,
+        title=clip.title,
     )
 
 
@@ -373,7 +424,6 @@ def draw_dialogue_hud(
     *,
     visible_chars: int | None = None,
     show_controls: bool = True,
-    control_text: str = "1X   AUTO OFF   SKIP >",
     now_ms: int = 0,
     font_family: str = "Sans Serif",
 ) -> None:
@@ -387,95 +437,61 @@ def draw_dialogue_hud(
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
     painter.setRenderHint(QPainter.RenderHint.TextAntialiasing, True)
 
-    bottom_h = clamp(int(h * 0.25), 170, 270)
-    fade_top = h - bottom_h - clamp(int(h * 0.07), 42, 90)
-    gradient = QLinearGradient(0, fade_top, 0, h)
-    gradient.setColorAt(0.0, QColor(0, 0, 0, 0))
-    gradient.setColorAt(0.32, QColor(0, 0, 0, 150))
-    gradient.setColorAt(1.0, QColor(0, 0, 0, 232))
-    painter.fillRect(QRectF(0, fade_top, w, h - fade_top), QBrush(gradient))
+    panel_w = clamp(int(w * 0.39), 520, 850)
+    panel_h = clamp(int(h * 0.24), 178, 260)
+    panel_x = clamp(int(w * 0.022), 22, 54)
+    panel_y = min(
+        h - panel_h - clamp(int(h * 0.12), 70, 160),
+        clamp(int(h * 0.62), 300, h - panel_h - 16),
+    )
+    panel = QRectF(panel_x, panel_y, panel_w, panel_h)
 
-    margin_x = clamp(int(w * 0.055), 44, 128)
-    panel_top = h - bottom_h + clamp(int(bottom_h * 0.15), 24, 42)
-    panel_bottom = h - clamp(int(h * 0.035), 24, 46)
-    panel = QRectF(margin_x, panel_top, w - margin_x * 2, panel_bottom - panel_top)
+    body = QPainterPath()
+    cut = clamp(int(panel_h * 0.10), 10, 22)
+    body.moveTo(panel.left() + cut, panel.top())
+    body.lineTo(panel.right(), panel.top())
+    body.lineTo(panel.right(), panel.bottom() - cut)
+    body.lineTo(panel.right() - cut, panel.bottom())
+    body.lineTo(panel.left(), panel.bottom())
+    body.lineTo(panel.left(), panel.top() + cut)
+    body.closeSubpath()
+
+    fill = QLinearGradient(panel.left(), panel.top(), panel.right(), panel.bottom())
+    fill.setColorAt(0.0, QColor(18, 22, 24, 214))
+    fill.setColorAt(1.0, QColor(18, 20, 22, 174))
+    painter.setPen(QPen(QColor(255, 255, 255, 38), 1))
+    painter.setBrush(QBrush(fill))
+    painter.drawPath(body)
 
     painter.setPen(QPen(QColor(255, 255, 255, 46), 1))
-    painter.drawLine(QPointF(panel.left(), panel.top()), QPointF(panel.right(), panel.top()))
-    painter.setPen(QPen(QColor(255, 255, 255, 18), 1))
     painter.drawLine(
-        QPointF(panel.left() + 28, panel.bottom()),
-        QPointF(panel.right() - 28, panel.bottom()),
+        QPointF(panel.left() + 16, panel.top() + 1),
+        QPointF(panel.right() - 16, panel.top() + 1),
     )
 
-    accent_w = clamp(int(w * 0.018), 18, 34)
-    accent = QPolygonF(
-        [
-            QPointF(panel.left(), panel.top()),
-            QPointF(panel.left() + accent_w, panel.top()),
-            QPointF(panel.left() + accent_w * 0.35, panel.bottom()),
-            QPointF(panel.left() - accent_w * 0.45, panel.bottom()),
-        ]
-    )
+    label_w = clamp(int(panel_w * 0.29), 116, 168)
+    label_h = clamp(int(panel_h * 0.18), 22, 31)
+    label_rect = QRectF(panel.left() + 16, panel.top() - label_h + 5, label_w, label_h)
     painter.setPen(Qt.PenStyle.NoPen)
-    painter.setBrush(QColor(255, 255, 255, 34))
-    painter.drawPolygon(accent)
+    painter.setBrush(QColor(224, 230, 232, 88))
+    painter.drawRect(label_rect)
 
-    hot = QPolygonF(
-        [
-            QPointF(panel.left() + accent_w * 0.6, panel.top()),
-            QPointF(panel.left() + accent_w * 1.28, panel.top()),
-            QPointF(panel.left() + accent_w * 0.74, panel.top() + accent_w * 1.7),
-        ]
-    )
-    painter.setBrush(QColor(255, 196, 0, 210))
-    painter.drawPolygon(hot)
+    label_font = QFont(font_family, clamp(int(h * 0.012), 9, 14), QFont.Weight.Bold)
+    label_option = QTextOption(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+    label_option.setWrapMode(QTextOption.WrapMode.NoWrap)
+    painter.setFont(label_font)
+    painter.setPen(QColor(44, 48, 50, 220))
+    painter.drawText(label_rect.adjusted(10, 0, 0, 0), "VOICE", label_option)
 
-    name_font_size = clamp(int(h * 0.027), 19, 32)
-    name_font = QFont(font_family, name_font_size, QFont.Weight.DemiBold)
-    name_text = speaker or "罗德岛"
-    name_metrics = painter.fontMetrics()
-    painter.setFont(name_font)
-    name_metrics = painter.fontMetrics()
-    name_w = clamp(name_metrics.horizontalAdvance(name_text) + 64, 132, 340)
-    name_h = clamp(int(name_font_size * 1.65), 34, 56)
-    name_x = panel.left() + clamp(int(w * 0.02), 20, 42)
-    name_y = panel.top() - int(name_h * 0.58)
-
-    name_path = QPainterPath()
-    name_path.moveTo(name_x, name_y)
-    name_path.lineTo(name_x + name_w, name_y)
-    name_path.lineTo(name_x + name_w - 18, name_y + name_h)
-    name_path.lineTo(name_x + 12, name_y + name_h)
-    name_path.closeSubpath()
-    painter.setPen(QPen(QColor(255, 255, 255, 52), 1))
-    painter.setBrush(QColor(8, 10, 12, 218))
-    painter.drawPath(name_path)
-    painter.setPen(Qt.PenStyle.NoPen)
-    painter.setBrush(QColor(255, 196, 0, 230))
-    painter.drawRect(QRectF(name_x + 16, name_y + name_h - 4, 54, 4))
-
-    centered = QTextOption(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
-    centered.setWrapMode(QTextOption.WrapMode.NoWrap)
-    draw_text_shadow(
-        painter,
-        QRectF(name_x + 28, name_y, name_w - 42, name_h),
-        name_text,
-        name_font,
-        QColor(248, 250, 252),
-        centered,
-        shadow_alpha=190,
-    )
-
-    text_font_size = clamp(int(h * 0.032), 21, 36)
+    text_font_size = clamp(int(h * 0.022), 17, 28)
     text_font = QFont(font_family, text_font_size, QFont.Weight.Medium)
     text_option = QTextOption(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
     text_option.setWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
     text_rect = QRectF(
-        name_x + 4,
-        panel.top() + clamp(int(h * 0.03), 22, 42),
-        panel.width() - clamp(int(w * 0.09), 96, 180),
-        panel.height() - clamp(int(h * 0.05), 34, 70),
+        panel.left() + clamp(int(panel_w * 0.055), 24, 42),
+        panel.top() + clamp(int(panel_h * 0.17), 24, 38),
+        panel.width() - clamp(int(panel_w * 0.12), 56, 94),
+        panel.height() - clamp(int(panel_h * 0.24), 40, 62),
     )
     draw_text_shadow(
         painter,
@@ -488,43 +504,20 @@ def draw_dialogue_hud(
 
     if visible_chars is not None and visible_chars >= len(text):
         blink_on = (now_ms // 420) % 2 == 0
-        arrow_alpha = 210 if blink_on else 86
-        arrow_size = clamp(int(h * 0.018), 13, 24)
-        ax = panel.right() - arrow_size * 2.4
-        ay = panel.bottom() - arrow_size * 1.55
+        arrow_alpha = 230 if blink_on else 88
+        arrow_size = clamp(int(h * 0.014), 10, 18)
+        ax = panel.right() - arrow_size * 2.0
+        ay = panel.bottom() - arrow_size * 1.45
         arrow = QPolygonF(
             [
-                QPointF(ax, ay),
-                QPointF(ax + arrow_size, ay + arrow_size * 0.55),
-                QPointF(ax, ay + arrow_size * 1.1),
+                QPointF(ax, ay + arrow_size * 0.2),
+                QPointF(ax + arrow_size, ay + arrow_size * 0.2),
+                QPointF(ax + arrow_size * 0.5, ay + arrow_size),
             ]
         )
         painter.setBrush(QColor(255, 255, 255, arrow_alpha))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawPolygon(arrow)
-
-    if show_controls:
-        control_font_size = clamp(int(h * 0.018), 12, 19)
-        control_font = QFont(font_family, control_font_size, QFont.Weight.DemiBold)
-        control_option = QTextOption(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-        )
-        control_option.setWrapMode(QTextOption.WrapMode.NoWrap)
-        control_rect = QRectF(
-            w - margin_x - clamp(int(w * 0.28), 260, 420),
-            clamp(int(h * 0.055), 28, 58),
-            clamp(int(w * 0.28), 260, 420),
-            34,
-        )
-        draw_text_shadow(
-            painter,
-            control_rect,
-            control_text,
-            control_font,
-            QColor(242, 243, 245),
-            control_option,
-            shadow_alpha=180,
-        )
 
     painter.restore()
 
@@ -563,15 +556,12 @@ class DialogueLayer(QWidget):
         line: str,
         typing_cps: float,
         show_controls: bool,
-        speed_label: str,
     ):
         super().__init__(parent)
         self.speaker = speaker
         self.line = line
         self.typing_cps = max(0.0, typing_cps)
         self.show_controls = show_controls
-        speed = speed_label.strip() or DEFAULT_SPEED_LABEL
-        self.control_text = f"{speed}   AUTO OFF   SKIP >"
         self.font_family = pick_font_family()
         self.visible_chars = len(line) if self.typing_cps <= 0 else 0
         self.typing_started = 0.0
@@ -618,7 +608,6 @@ class DialogueLayer(QWidget):
             self.line,
             visible_chars=self.visible_chars,
             show_controls=self.show_controls,
-            control_text=self.control_text,
             now_ms=int(time.monotonic() * 1000),
             font_family=self.font_family,
         )
@@ -634,7 +623,6 @@ class Overlay(QWidget):
         typing_cps: float,
         hold_ms: int,
         show_dialog: bool,
-        speed_label: str,
     ):
         super().__init__()
 
@@ -715,7 +703,6 @@ class Overlay(QWidget):
                 line=scene.line,
                 typing_cps=typing_cps,
                 show_controls=True,
-                speed_label=speed_label,
             )
             if show_dialog
             else None
@@ -783,7 +770,6 @@ def render_preview(
     output_path: Path,
     size: tuple[int, int],
     show_dialog: bool,
-    speed_label: str,
 ) -> None:
     width, height = size
     image = QImage(width, height, QImage.Format.Format_ARGB32_Premultiplied)
@@ -822,9 +808,6 @@ def render_preview(
             scene.line,
             visible_chars=len(scene.line),
             show_controls=True,
-            control_text=(
-                f"{speed_label.strip() or DEFAULT_SPEED_LABEL}   AUTO OFF   SKIP >"
-            ),
             now_ms=int(time.monotonic() * 1000),
             font_family=pick_font_family(),
         )
@@ -868,7 +851,6 @@ def main() -> int:
             output_path=Path(args.preview).expanduser().resolve(),
             size=parse_size(args.preview_size),
             show_dialog=not args.no_dialog,
-            speed_label=args.speed_label,
         )
         return 0
 
@@ -884,7 +866,6 @@ def main() -> int:
         typing_cps=args.typing_cps,
         hold_ms=args.hold_ms,
         show_dialog=not args.no_dialog,
-        speed_label=args.speed_label,
     )
     w.start()
 
