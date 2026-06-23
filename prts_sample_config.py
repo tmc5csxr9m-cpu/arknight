@@ -14,3 +14,5 @@ myconfig = {
         "side": "right",
     },
 }
+
+background = "assets/prts/Avg_23_I01.png"
