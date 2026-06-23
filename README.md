@@ -52,7 +52,7 @@ Useful flags:
 ```bash
 python main.py config.py --speaker 阿米娅 --line "博士，请下达指令。" --side left
 python main.py config.py --no-dialog
-python main.py config.py --typing-cps 0 --hold-ms 1600
+python main.py config.py --typing-cps 0 --hold-ms 1600 --speed-label 3X
 ```
 
 PRTS-downloaded files are documented in `assets/prts/SOURCES.md`. Keep this project private while it contains game assets.

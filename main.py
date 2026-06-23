@@ -50,6 +50,7 @@ DEFAULT_ANIM_MS = 500
 DEFAULT_TYPING_CPS = 36.0
 DEFAULT_HOLD_MS = 900
 DEFAULT_PREVIEW_SIZE = "1600x900"
+DEFAULT_SPEED_LABEL = "1X"
 DEFAULT_LINES = [
     "博士，通讯链路已经接入。接下来的行动，请交给我。",
     "这里是罗德岛。目标区域状态稳定，可以开始下一步确认。",
@@ -148,6 +149,11 @@ def parse_args() -> argparse.Namespace:
         "--background",
         default=None,
         help="Optional story background image. Relative paths resolve from the config directory.",
+    )
+    parser.add_argument(
+        "--speed-label",
+        default=DEFAULT_SPEED_LABEL,
+        help="Top-right story speed label, for example 1X or 3X",
     )
     parser.add_argument(
         "--preview",
@@ -367,6 +373,7 @@ def draw_dialogue_hud(
     *,
     visible_chars: int | None = None,
     show_controls: bool = True,
+    control_text: str = "1X   AUTO OFF   SKIP >",
     now_ms: int = 0,
     font_family: str = "Sans Serif",
 ) -> None:
@@ -503,7 +510,6 @@ def draw_dialogue_hud(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )
         control_option.setWrapMode(QTextOption.WrapMode.NoWrap)
-        control_text = "1X   AUTO OFF   SKIP >"
         control_rect = QRectF(
             w - margin_x - clamp(int(w * 0.28), 260, 420),
             clamp(int(h * 0.055), 28, 58),
@@ -557,12 +563,15 @@ class DialogueLayer(QWidget):
         line: str,
         typing_cps: float,
         show_controls: bool,
+        speed_label: str,
     ):
         super().__init__(parent)
         self.speaker = speaker
         self.line = line
         self.typing_cps = max(0.0, typing_cps)
         self.show_controls = show_controls
+        speed = speed_label.strip() or DEFAULT_SPEED_LABEL
+        self.control_text = f"{speed}   AUTO OFF   SKIP >"
         self.font_family = pick_font_family()
         self.visible_chars = len(line) if self.typing_cps <= 0 else 0
         self.typing_started = 0.0
@@ -609,6 +618,7 @@ class DialogueLayer(QWidget):
             self.line,
             visible_chars=self.visible_chars,
             show_controls=self.show_controls,
+            control_text=self.control_text,
             now_ms=int(time.monotonic() * 1000),
             font_family=self.font_family,
         )
@@ -624,6 +634,7 @@ class Overlay(QWidget):
         typing_cps: float,
         hold_ms: int,
         show_dialog: bool,
+        speed_label: str,
     ):
         super().__init__()
 
@@ -704,6 +715,7 @@ class Overlay(QWidget):
                 line=scene.line,
                 typing_cps=typing_cps,
                 show_controls=True,
+                speed_label=speed_label,
             )
             if show_dialog
             else None
@@ -771,6 +783,7 @@ def render_preview(
     output_path: Path,
     size: tuple[int, int],
     show_dialog: bool,
+    speed_label: str,
 ) -> None:
     width, height = size
     image = QImage(width, height, QImage.Format.Format_ARGB32_Premultiplied)
@@ -809,6 +822,9 @@ def render_preview(
             scene.line,
             visible_chars=len(scene.line),
             show_controls=True,
+            control_text=(
+                f"{speed_label.strip() or DEFAULT_SPEED_LABEL}   AUTO OFF   SKIP >"
+            ),
             now_ms=int(time.monotonic() * 1000),
             font_family=pick_font_family(),
         )
@@ -852,6 +868,7 @@ def main() -> int:
             output_path=Path(args.preview).expanduser().resolve(),
             size=parse_size(args.preview_size),
             show_dialog=not args.no_dialog,
+            speed_label=args.speed_label,
         )
         return 0
 
@@ -867,6 +884,7 @@ def main() -> int:
         typing_cps=args.typing_cps,
         hold_ms=args.hold_ms,
         show_dialog=not args.no_dialog,
+        speed_label=args.speed_label,
     )
     w.start()
 
