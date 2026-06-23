@@ -39,10 +39,16 @@ from PySide6.QtGui import (  # noqa: E402
     QPen,
     QPixmap,
     QPolygonF,
+    QTextDocument,
     QTextOption,
 )
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer  # noqa: E402
-from PySide6.QtWidgets import QApplication, QLabel, QWidget  # noqa: E402
+from PySide6.QtWidgets import (  # noqa: E402
+    QApplication,
+    QGraphicsOpacityEffect,
+    QLabel,
+    QWidget,
+)
 
 
 APP_ID = "alpha-floating-widget"
@@ -409,11 +415,32 @@ def draw_text_shadow(
 ) -> None:
     painter.setFont(font)
     painter.setPen(QColor(0, 0, 0, shadow_alpha))
-    for dx, dy in ((0, 2), (2, 0), (-2, 0), (0, -2)):
+    for dx, dy in ((0, 1.2), (1.0, 0.5)):
         painter.drawText(rect.translated(dx, dy), text, option)
 
     painter.setPen(color)
     painter.drawText(rect, text, option)
+
+
+def fit_font_to_rect(
+    text: str,
+    font_family: str,
+    max_size: int,
+    min_size: int,
+    rect: QRectF,
+) -> QFont:
+    for size in range(max_size, min_size - 1, -1):
+        font = QFont(font_family, size, QFont.Weight.Medium)
+        doc = QTextDocument()
+        doc.setDocumentMargin(0)
+        doc.setDefaultFont(font)
+        doc.setPlainText(text)
+        doc.setTextWidth(rect.width())
+
+        if doc.size().height() <= rect.height() + 1:
+            return font
+
+    return QFont(font_family, min_size, QFont.Weight.Medium)
 
 
 def draw_dialogue_hud(
@@ -437,8 +464,9 @@ def draw_dialogue_hud(
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
     painter.setRenderHint(QPainter.RenderHint.TextAntialiasing, True)
 
-    panel_w = clamp(int(w * 0.39), 520, 850)
-    panel_h = clamp(int(h * 0.24), 178, 260)
+    panel_ratio = 0.68 if w <= 1200 else 0.42
+    panel_w = clamp(int(w * panel_ratio), 500, 900)
+    panel_h = clamp(int(h * 0.25), 190, 270)
     panel_x = clamp(int(w * 0.022), 22, 54)
     panel_y = min(
         h - panel_h - clamp(int(h * 0.12), 70, 160),
@@ -456,50 +484,78 @@ def draw_dialogue_hud(
     body.lineTo(panel.left(), panel.top() + cut)
     body.closeSubpath()
 
+    shadow = QPainterPath(body)
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(QColor(0, 0, 0, 54))
+    painter.drawPath(shadow.translated(0, 4))
+
     fill = QLinearGradient(panel.left(), panel.top(), panel.right(), panel.bottom())
-    fill.setColorAt(0.0, QColor(18, 22, 24, 214))
-    fill.setColorAt(1.0, QColor(18, 20, 22, 174))
-    painter.setPen(QPen(QColor(255, 255, 255, 38), 1))
+    fill.setColorAt(0.0, QColor(24, 28, 29, 186))
+    fill.setColorAt(0.58, QColor(19, 22, 24, 164))
+    fill.setColorAt(1.0, QColor(12, 14, 16, 128))
+    painter.setPen(QPen(QColor(255, 255, 255, 26), 1))
     painter.setBrush(QBrush(fill))
     painter.drawPath(body)
 
-    painter.setPen(QPen(QColor(255, 255, 255, 46), 1))
+    shade = QLinearGradient(panel.left(), panel.top(), panel.left(), panel.bottom())
+    shade.setColorAt(0.0, QColor(255, 255, 255, 26))
+    shade.setColorAt(0.18, QColor(255, 255, 255, 4))
+    shade.setColorAt(1.0, QColor(0, 0, 0, 36))
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(QBrush(shade))
+    painter.drawPath(body)
+
+    painter.setPen(QPen(QColor(255, 255, 255, 32), 1))
     painter.drawLine(
         QPointF(panel.left() + 16, panel.top() + 1),
         QPointF(panel.right() - 16, panel.top() + 1),
+    )
+    painter.setPen(QPen(QColor(255, 255, 255, 18), 1))
+    painter.drawLine(
+        QPointF(panel.left() + 12, panel.bottom() - 1),
+        QPointF(panel.right() - 28, panel.bottom() - 1),
     )
 
     label_w = clamp(int(panel_w * 0.29), 116, 168)
     label_h = clamp(int(panel_h * 0.18), 22, 31)
     label_rect = QRectF(panel.left() + 16, panel.top() - label_h + 5, label_w, label_h)
     painter.setPen(Qt.PenStyle.NoPen)
-    painter.setBrush(QColor(224, 230, 232, 88))
+    painter.setBrush(QColor(210, 216, 218, 76))
     painter.drawRect(label_rect)
 
     label_font = QFont(font_family, clamp(int(h * 0.012), 9, 14), QFont.Weight.Bold)
     label_option = QTextOption(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
     label_option.setWrapMode(QTextOption.WrapMode.NoWrap)
     painter.setFont(label_font)
-    painter.setPen(QColor(44, 48, 50, 220))
+    painter.setPen(QColor(42, 46, 48, 205))
     painter.drawText(label_rect.adjusted(10, 0, 0, 0), "VOICE", label_option)
 
-    text_font_size = clamp(int(h * 0.022), 17, 28)
-    text_font = QFont(font_family, text_font_size, QFont.Weight.Medium)
     text_option = QTextOption(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
     text_option.setWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
     text_rect = QRectF(
         panel.left() + clamp(int(panel_w * 0.055), 24, 42),
-        panel.top() + clamp(int(panel_h * 0.17), 24, 38),
+        panel.top() + clamp(int(panel_h * 0.15), 24, 38),
         panel.width() - clamp(int(panel_w * 0.12), 56, 94),
-        panel.height() - clamp(int(panel_h * 0.24), 40, 62),
+        panel.height() - clamp(int(panel_h * 0.22), 38, 58),
     )
+    text_font = fit_font_to_rect(
+        shown_text,
+        font_family,
+        max_size=clamp(int(h * 0.021), 17, 27),
+        min_size=clamp(int(h * 0.015), 12, 18),
+        rect=text_rect,
+    )
+
+    painter.save()
+    painter.setClipPath(body)
     draw_text_shadow(
         painter,
         text_rect,
         shown_text,
         text_font,
-        QColor(246, 247, 248),
+        QColor(232, 235, 234, 228),
         text_option,
+        shadow_alpha=112,
     )
 
     if visible_chars is not None and visible_chars >= len(text):
@@ -518,6 +574,7 @@ def draw_dialogue_hud(
         painter.setBrush(QColor(255, 255, 255, arrow_alpha))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawPolygon(arrow)
+    painter.restore()
 
     painter.restore()
 
@@ -569,7 +626,21 @@ class DialogueLayer(QWidget):
         self.setGeometry(0, 0, parent.width(), parent.height())
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.opacity_effect = QGraphicsOpacityEffect(self)
+        self.opacity_effect.setOpacity(0.0)
+        self.setGraphicsEffect(self.opacity_effect)
         self.hide()
+
+        self.fade_in_anim = QPropertyAnimation(self.opacity_effect, b"opacity", self)
+        self.fade_in_anim.setDuration(180)
+        self.fade_in_anim.setStartValue(0.0)
+        self.fade_in_anim.setEndValue(1.0)
+        self.fade_in_anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+
+        self.fade_out_anim = QPropertyAnimation(self.opacity_effect, b"opacity", self)
+        self.fade_out_anim.setDuration(220)
+        self.fade_out_anim.setEndValue(0.0)
+        self.fade_out_anim.setEasingCurve(QEasingCurve.Type.OutCubic)
 
         self.typing_timer = QTimer(self)
         self.typing_timer.timeout.connect(self.advance_text)
@@ -580,11 +651,19 @@ class DialogueLayer(QWidget):
     def start(self):
         self.show()
         self.raise_()
+        self.opacity_effect.setOpacity(0.0)
         self.typing_started = time.monotonic()
         if self.typing_cps > 0 and self.visible_chars < len(self.line):
             self.typing_timer.start(16)
         self.repaint_timer.start(420)
+        self.fade_in_anim.start()
         self.update()
+
+    def fade_out(self):
+        self.fade_in_anim.stop()
+        self.fade_out_anim.stop()
+        self.fade_out_anim.setStartValue(self.opacity_effect.opacity())
+        self.fade_out_anim.start()
 
     def advance_text(self):
         elapsed = time.monotonic() - self.typing_started
@@ -760,6 +839,9 @@ class Overlay(QWidget):
         QTimer.singleShot(max(0, delay), self.start_exit)
 
     def start_exit(self):
+        if self.dialog_layer is not None:
+            self.dialog_layer.fade_out()
+
         if self.exit_anim.state() != QPropertyAnimation.State.Running:
             self.exit_anim.start()
 
