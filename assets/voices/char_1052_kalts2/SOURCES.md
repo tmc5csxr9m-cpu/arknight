@@ -1,6 +1,8 @@
 # char_1052_kalts2 Voice Assets
 
-These Chinese voice files were downloaded from PRTS for private local use with the existing `1.png` / `2.png` character images.
+These Chinese voice files were downloaded from PRTS for this non-commercial fan project with the existing `1.png` / `2.png` character images. The files are documented for provenance; this repository does not re-license the original game assets.
+
+这些中文语音文件下载自 PRTS，用于本非商业粉丝项目，并与现有 `1.png` / `2.png` 人物图配合使用。此文件只记录来源；本仓库不对原游戏素材授予再授权。
 
 PRTS voice record page:
 
