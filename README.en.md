@@ -3,6 +3,7 @@
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white)
 ![PySide6](https://img.shields.io/badge/UI-PySide6-41CD52?style=flat-square)
 ![Wayland](https://img.shields.io/badge/Target-Linux%20Wayland-555?style=flat-square)
+![Code License](https://img.shields.io/badge/Code%20License-AGPL--3.0--only-blue?style=flat-square)
 ![Fan Tool](https://img.shields.io/badge/Project-Non--Commercial%20Fan%20Tool-2E8B57?style=flat-square)
 
 A PySide6 desktop overlay that simulates the Arknights home assistant `VOICE` bubble. It displays the existing character portrait, plays a matched voice clip, and renders a translucent subtitle bubble near the lower-left corner.
@@ -18,6 +19,7 @@ A PySide6 desktop overlay that simulates the Arknights home assistant `VOICE` bu
 - [Configuration](#configuration)
 - [CLI Options](#cli-options)
 - [Preview Rendering](#preview-rendering)
+- [License and Asset Boundary](#license-and-asset-boundary)
 - [Asset Sources](#asset-sources)
 - [Troubleshooting](#troubleshooting)
 - [Developer Documentation](#developer-documentation)
@@ -218,6 +220,25 @@ QT_QPA_PLATFORM=offscreen python main.py config.py \
   --typing-cps 0 \
   --line "你们在最危急的时候带领罗德岛找到了航向，阿米娅无疑已经是成熟的领袖，我也从未怀疑过可露希尔的才能与你的决策。罗德岛不会因为离开谁就无法前行，失去的一切同样造就了现在的罗德岛。"
 ```
+
+<a id="license-and-asset-boundary"></a>
+## License and Asset Boundary
+
+This repository uses split licensing:
+
+- Project-owned Python code is licensed under `AGPL-3.0-only`.
+- Full license text: [LICENSES/AGPL-3.0-only.txt](LICENSES/AGPL-3.0-only.txt).
+- Scope summary: [LICENSE.md](LICENSE.md).
+- Game assets and game content are excluded from AGPL: [ASSETS-NOTICE.md](ASSETS-NOTICE.md).
+
+Materials not covered by AGPL-3.0-only include:
+
+- `1.png`, `2.png`
+- `processed_png/`
+- `previews/`
+- `assets/voices/`
+- Arknights character names, dialogue text, voice audio, portraits, and other
+  game-derived content appearing in configuration files and documentation
 
 <a id="asset-sources"></a>
 ## Asset Sources

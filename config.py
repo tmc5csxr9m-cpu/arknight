@@ -1,3 +1,9 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# The Python configuration structure in this file is licensed as project code.
+# Embedded Arknights names, dialogue text, voice references, and asset paths are
+# game content and are not re-licensed by this repository. See ASSETS-NOTICE.md.
+
 # Existing character images with matched PRTS voice clips.
 
 KALTS2_HOME_VOICES = [

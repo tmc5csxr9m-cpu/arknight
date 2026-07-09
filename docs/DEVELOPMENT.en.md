@@ -5,6 +5,7 @@ This document is for maintainers. It covers architecture, data flow, rendering, 
 ## Table of Contents
 
 - [Project Scope](#project-scope)
+- [License Boundary](#license-boundary)
 - [Repository Layout](#repository-layout)
 - [Entry Flow](#entry-flow)
 - [Core Data Model](#core-data-model)
@@ -38,16 +39,50 @@ The current target is the Arknights home assistant `VOICE` bubble, not the visua
 
 Asset maintenance principles:
 
+- Python code is licensed under `AGPL-3.0-only`.
+- AGPL applies only to project-owned code, not game assets or game content.
 - The code may be public, but game assets should not be described as open-source assets.
 - Voice, portrait, and dialogue sources must be documented.
 - Non-commercial use does not automatically remove copyright risk.
 - Remove assets promptly if requested by rights holders.
+
+<a id="license-boundary"></a>
+## License Boundary
+
+Keep the repository license boundary explicit:
+
+| Scope | Status |
+| --- | --- |
+| `main.py` | Project code, `AGPL-3.0-only`. |
+| `process.py` | Project code, `AGPL-3.0-only`. |
+| `main.py.bak` / `process.py.bak` | Backup code, `AGPL-3.0-only`. |
+| Python configuration structure in `config.py` / `start.py` | Project code, `AGPL-3.0-only`. |
+| Character names, dialogue text, and voice paths in `config.py` / `start.py` | Game content or asset references; not re-licensed by this repository. |
+| `1.png` / `2.png` | Game portrait assets; not covered by AGPL. |
+| `processed_png/` | Processed portrait assets; not covered by AGPL. |
+| `assets/voices/` | Game voice assets; not covered by AGPL. |
+| `previews/` | Preview images containing game assets; not covered by AGPL. |
+
+Maintenance rules:
+
+- Add `SPDX-License-Identifier: AGPL-3.0-only` to new Python source files.
+- If a new config file contains game dialogue or asset paths, state that the
+  config structure is code while embedded game content is not re-licensed.
+- Update [ASSETS-NOTICE.md](../ASSETS-NOTICE.md) when adding asset directories.
+- Do not describe [LICENSES/AGPL-3.0-only.txt](../LICENSES/AGPL-3.0-only.txt)
+  as an asset license for the whole repository.
+- Public README wording should keep linking to [LICENSE.md](../LICENSE.md) and
+  [ASSETS-NOTICE.md](../ASSETS-NOTICE.md).
 
 <a id="repository-layout"></a>
 ## Repository Layout
 
 ```text
 .
+├── LICENSE.md
+├── ASSETS-NOTICE.md
+├── LICENSES/
+│   └── AGPL-3.0-only.txt
 ├── main.py
 ├── config.py
 ├── start.py
@@ -530,6 +565,9 @@ Before public release:
 - No `.env` files.
 - No token, key, pem, p12, or secret files.
 - Local reference screenshots are ignored.
+- `LICENSE.md` clearly says AGPL applies only to code.
+- `ASSETS-NOTICE.md` clearly lists assets excluded from AGPL.
+- Python source files include `SPDX-License-Identifier: AGPL-3.0-only`.
 - README copyright wording is not overconfident.
 - Voice and portrait sources are documented.
 - Preview images render correctly.

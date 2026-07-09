@@ -3,6 +3,7 @@
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white)
 ![PySide6](https://img.shields.io/badge/UI-PySide6-41CD52?style=flat-square)
 ![Wayland](https://img.shields.io/badge/Target-Linux%20Wayland-555?style=flat-square)
+![Code License](https://img.shields.io/badge/Code%20License-AGPL--3.0--only-blue?style=flat-square)
 ![Fan Tool](https://img.shields.io/badge/Project-Fan%20Tool-2E8B57?style=flat-square)
 
 一个用 PySide6 写的桌面浮层脚本，用来模拟《明日方舟》主界面助理点击后出现的 `VOICE` 语音气泡。项目会显示现有立绘，播放匹配语音，并在左下角显示半透明语音字幕框。
@@ -18,6 +19,7 @@
 - [配置文件说明](#配置文件说明)
 - [命令行参数](#命令行参数)
 - [预览图生成](#预览图生成)
+- [许可证与素材边界](#许可证与素材边界)
 - [素材来源](#素材来源)
 - [常见问题](#常见问题)
 - [开发者文档](#开发者文档)
@@ -218,6 +220,24 @@ QT_QPA_PLATFORM=offscreen python main.py config.py \
   --typing-cps 0 \
   --line "你们在最危急的时候带领罗德岛找到了航向，阿米娅无疑已经是成熟的领袖，我也从未怀疑过可露希尔的才能与你的决策。罗德岛不会因为离开谁就无法前行，失去的一切同样造就了现在的罗德岛。"
 ```
+
+<a id="许可证与素材边界"></a>
+## 许可证与素材边界
+
+本仓库使用分离授权：
+
+- 本项目自有 Python 代码使用 `AGPL-3.0-only`。
+- 完整许可证正文：[LICENSES/AGPL-3.0-only.txt](LICENSES/AGPL-3.0-only.txt)。
+- 适用范围说明：[LICENSE.md](LICENSE.md)。
+- 游戏素材和游戏内容不适用 AGPL：[ASSETS-NOTICE.md](ASSETS-NOTICE.md)。
+
+不在 AGPL-3.0-only 覆盖范围内的内容包括：
+
+- `1.png`、`2.png`
+- `processed_png/`
+- `previews/`
+- `assets/voices/`
+- 配置文件和文档中出现的《明日方舟》角色名、台词、语音、立绘及其他游戏衍生内容
 
 <a id="素材来源"></a>
 ## 素材来源

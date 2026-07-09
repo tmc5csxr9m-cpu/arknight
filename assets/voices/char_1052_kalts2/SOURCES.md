@@ -4,6 +4,12 @@ These Chinese voice files were downloaded from PRTS for this non-commercial fan 
 
 这些中文语音文件下载自 PRTS，用于本非商业粉丝项目，并与现有 `1.png` / `2.png` 人物图配合使用。此文件只记录来源；本仓库不对原游戏素材授予再授权。
 
+License boundary / 许可边界:
+
+- Project code is licensed separately under `AGPL-3.0-only`.
+- These voice assets are not covered by that code license.
+- See [../../../ASSETS-NOTICE.md](../../../ASSETS-NOTICE.md).
+
 PRTS voice record page:
 
 - `https://prts.wiki/w/凯尔希·思衡托/语音记录`

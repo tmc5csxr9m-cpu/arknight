@@ -5,6 +5,7 @@
 ## 目录
 
 - [项目边界](#项目边界)
+- [许可边界](#许可边界)
 - [仓库结构](#仓库结构)
 - [入口流程](#入口流程)
 - [核心数据模型](#核心数据模型)
@@ -38,16 +39,47 @@
 
 版权维护原则：
 
+- Python 代码使用 `AGPL-3.0-only`。
+- AGPL 只适用于本项目自有代码，不适用于游戏素材和游戏内容。
 - 项目可以公开展示代码，但游戏素材不应被描述为开源素材。
 - 语音、立绘、台词来源必须记录清楚。
 - 非商业用途并不自动消除版权风险。
 - 如权利方要求移除素材，应优先处理。
+
+<a id="许可边界"></a>
+## 许可边界
+
+本仓库的许可边界必须保持清晰：
+
+| 范围 | 状态 |
+| --- | --- |
+| `main.py` | 本项目代码，`AGPL-3.0-only`。 |
+| `process.py` | 本项目代码，`AGPL-3.0-only`。 |
+| `main.py.bak` / `process.py.bak` | 备份代码，`AGPL-3.0-only`。 |
+| `config.py` / `start.py` 的 Python 配置结构 | 本项目代码，`AGPL-3.0-only`。 |
+| `config.py` / `start.py` 中的角色名、台词、语音路径 | 游戏内容或素材引用，不由本仓库重新授权。 |
+| `1.png` / `2.png` | 游戏立绘素材，不适用 AGPL。 |
+| `processed_png/` | 从立绘处理出的素材，不适用 AGPL。 |
+| `assets/voices/` | 游戏语音素材，不适用 AGPL。 |
+| `previews/` | 含游戏素材的预览图，不适用 AGPL。 |
+
+维护时遵循以下规则：
+
+- 新增 Python 源文件时，在文件头部添加 `SPDX-License-Identifier: AGPL-3.0-only`。
+- 新增配置文件如果包含游戏台词或素材路径，需要注明“配置结构是代码，嵌入的游戏内容不重新授权”。
+- 新增素材目录时，同步更新 [ASSETS-NOTICE.md](../ASSETS-NOTICE.md)。
+- 不要把 [LICENSES/AGPL-3.0-only.txt](../LICENSES/AGPL-3.0-only.txt) 写成适用于整个仓库的素材许可。
+- README 中对外表述应始终链接 [LICENSE.md](../LICENSE.md) 和 [ASSETS-NOTICE.md](../ASSETS-NOTICE.md)。
 
 <a id="仓库结构"></a>
 ## 仓库结构
 
 ```text
 .
+├── LICENSE.md
+├── ASSETS-NOTICE.md
+├── LICENSES/
+│   └── AGPL-3.0-only.txt
 ├── main.py
 ├── config.py
 ├── start.py
@@ -530,6 +562,9 @@ git grep -I -n -E '(gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-
 - 没有 `.env`。
 - 没有 token、key、pem、p12、secret。
 - 未跟踪参考截图已加入 `.gitignore`。
+- `LICENSE.md` 明确说明 AGPL 只适用于代码。
+- `ASSETS-NOTICE.md` 明确列出素材不适用 AGPL。
+- Python 源文件带有 `SPDX-License-Identifier: AGPL-3.0-only`。
 - README 版权说明不过度承诺。
 - 语音和立绘来源记录完整。
 - 预览图能显示。
